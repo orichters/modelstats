@@ -38,7 +38,13 @@ getRunStatus <- function(mydir = dir(), sort = "nf", user = NULL) {
     ii <- i
     i <- sub(paste0(dirname(i), "/"), "", i)
 
-    if (onCluster) out[i, "jobInSLURM"] <- foundInSlurm(ii, user)
+    if (onCluster) {
+      out[i, "jobInSLURM"] <- foundInSlurm(ii, user)
+      grsfile <- file.path(ii, "modelstats_getRunStatus.rds")
+      if (out[i, "jobInSLURM"] == "no" && file.exists(grsfile)) {
+        return(readRDS(grsfile))
+      }
+    }
 
 #    if (onCluster) if (!out[i, "jobInSLURM"] & onlyrunning) {
 #     out <- out[setdiff(rownames(out),i),]
@@ -128,6 +134,9 @@ getRunStatus <- function(mydir = dir(), sort = "nf", user = NULL) {
       } else {
         miffile <- paste0(ii, "/REMIND_generic_", cfg[["title"]], ".mif")
         out[i, "Mif"] <- if (file.exists(miffile) && file.info(miffile)[["size"]] > 3899999) "yes" else "no"
+        if (file.exists(paste0(ii, "/REMIND_generic_", cfg[["title"]], "_summation_errors.csv")) && out[i, "Mif"] == "yes") {
+          out[i, "Mif"] <- "sumError"
+        }
       }
     }
 
@@ -244,6 +253,9 @@ getRunStatus <- function(mydir = dir(), sort = "nf", user = NULL) {
     }
 
   } # END DIR LOOP
+
+  if (exists("grsfile") && out[i, "jobInSLURM"] == "no") saveRDS(out, grsfile)
+
   return(out)
 
 }
